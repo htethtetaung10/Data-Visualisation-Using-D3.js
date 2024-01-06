@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>AA's Delayed Flights</title>
+		<script type="text/javascript" src="../d3.js"></script>
+		<style type="text/css">
+			circle:hover{
+				fill: black
+			}
+			#title{
+				font-size: 28px;
+				color: #FDF1E7;
+				text-transform: uppercase;
+				margin-top: 10px;
+				margin-bottom: 30px;
+			}
+
+			#tooltip{
+				visibility: hidden;
+				height: auto;
+				width: auto;
+				margin-top: 2px;
+				color: #FDF1E7;
+				font-size: 24px;
+				margin-bottom: 5px;
+			}	
+		</style>
+	</head>
+	<body>
+		<h2>Delayed Flight Data of American Airlines (2021) </h2>
+		<div id="tooltip">
+
+		</div>
+		<script type="text/javascript">
+
+			//Width and height
+			var w = 1200;
+			var h = 500;
+
+			//Define map projection
+			var projection = d3.geoAlbersUsa()
+								   .translate([w/2, h/2])
+								   .scale([1000]);
+
+			//Define path generator
+			var path = d3.geoPath()
+							 .projection(projection);
+			
+			//Number formatting for population values
+			var formatAsThousands = d3.format(",");  //e.g. converts 123456 to "12
+
+			var tooltip = d3.select("#tooltip")
+
+			//Create SVG element
+			var svg = d3.select("body")
+						.append("svg")
+						.attr("width", w)
+						.attr("height", h);
+
+				//Load in GeoJSON data
+				d3.json("us-states.json", function(json) {
+
+					//Bind data and create one path per GeoJSON feature
+					svg.selectAll("path")
+					   .data(json.features)
+					   .enter()
+					   .append("path")
+					   .attr("d", path)
+					   .style("fill", "steelblue");
+
+					//Load in cities data
+					d3.csv("delay-by-airport.csv", function(data) {
+						
+						svg.selectAll("circle")
+						   .data(data)
+						   .enter()
+						   .append("circle")
+						   .attr("cx", function(d) {
+							   return projection([d.lon, d.lat])[0];
+						   })
+						   .attr("cy", function(d) {
+							   return projection([d.lon, d.lat])[1];
+						   })
+						   .attr("r", function(d) {
+								return Math.sqrt(parseInt(d.arr_flights) * 0.002);
+						   })
+						   .attr('fill', (d) => {
+								let percentage = (d.arr_del15 / d.arr_flights) * 100;
+
+								if(percentage <= 5){
+									return 'tomato'
+								}else if(percentage <= 10){
+									return 'orange'
+								}else if(percentage <= 15){
+									return 'lightgreen'
+								}else{
+									return 'yellow'
+								}
+							})
+						//    .attr("r", 3)
+						//    .style("fill", "yellow")
+						   .style("stroke", "gray")
+						   .style("stroke-width", 0.25)
+						   .style("opacity", 1)	
+						   .on('mouseover', function (d, i) {
+								d3.select(this).transition()
+										.duration('100')
+										.style("fill", "green")
+										// .attr("r", 7);
+							})
+							.on('mouseout', function (d, i) {
+								d3.select(this).transition()
+									.duration('200')
+									.style("fill", (d) => {
+										d3.linearGradient.selectAll('stop')
+											// .data(offset)
+											.join('stop')
+											.attr('offset', d => {
+													let percentage = (d.arr_del15 / d.arr_flights) * 100;
+
+													if(percentage <= 15){
+														return 'tomato'
+													}else if(percentage <= 30){
+														return 'orange'
+													}else if(percentage <= 45){
+														return 'lightgreen'
+													}else{
+														return 'yellow'
+													}
+
+											})
+											.attr('color', d => orange);
+									})
+									
+								
+									// .style("fill", (d) => {
+									// 	let percentage = (d.arr_del15 / d.arr_flights) * 100;
+
+									// 	if(percentage <= 15){
+									// 		return 'tomato'
+									// 	}else if(percentage <= 30){
+									// 		return 'orange'
+									// 	}else if(percentage <= 45){
+									// 		return 'lightgreen'
+									// 	}else{
+									// 		return 'yellow'
+									// 	}
+									// })
+									// .attr("r", 3)
+									.attr("r", function(d) {
+										return Math.sqrt(parseInt(d.arr_flights) * 0.002);
+						   })
+							})
+							.append("title")			
+						   	.text(function(d) {
+								return (d.name + ", " + d.iata_code + ", " + d.state + ", " + d.arr_flights+", "+d.arr_del15);
+						   	});
+
+						
+					});
+
+			
+				});
+			
+			// });
+			
+		</script>
+	</body>
+</html>

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Dealyed Flights</title>
+		<script type="text/javascript" src="../d3.js"></script>
+		<style type="text/css">
+			body{
+				margin: 0px;
+				overflow: hidden;
+			}	
+
+			text{
+				font-family: sans-serif;
+			}
+
+			.tick text{
+				font-size: 1.2em;
+				fill: #635F5D;
+			}
+
+			.tick line{
+				stroke: #C0C0BB;
+			}
+
+			.axis-label{
+				font-size: 2em;
+				fill: #8E8883;
+			}
+			.title{
+				font-size: 3em;
+				fill: #635F5D;
+			}
+			
+			/* circle{
+				opacity: 0.3;
+			} */
+			.line-path{
+				/* fill: yellow; */
+				fill: none;
+				color: maroon;
+				stroke-width: 2;
+				stroke-linejoin: round;
+			}
+
+			/* .line-path2{
+				fill: pink;
+				color: maroon;
+				stroke-width: 2;
+				stroke-linejoin: round;
+			}
+
+			.line-path3{
+				fill: brown;
+				color: maroon;
+				stroke-width: 2;
+				stroke-linejoin: round;
+			}
+			.line-path4{
+				fill: purple;
+				color: maroon;
+				stroke-width: 2;
+				stroke-linejoin: round;
+			}
+			.line-path5{
+				fill: #0DFCF0;
+				color: maroon;
+				stroke-width: 2;
+				stroke-linejoin: round;
+			}
+			.line-path6{
+				fill: #66FC0D;
+				color: maroon;
+				stroke-width: 2;
+				stroke-linejoin: round;
+			} */
+			#legend{
+				color: rgb(56, 58, 74);
+				font-size: 18px;
+				text-align: center;
+				min-height: 150px;
+				max-width: 180px;
+				margin-top: 40px;
+				margin-bottom: 40px;
+    		}
+			g{
+				font-size: 10px;
+			}
+			#tooltip{
+				visibility: hidden;
+				height: auto;
+				width: auto;
+				margin-top: 2px;
+				color: #FDF1E7;
+				font-size: 24px;
+				margin-bottom: 5px;
+			}
+
+		</style>
+	</head>
+	<body>
+		<svg id="legend">
+			<g>
+				<rect x="10" y="24" width="20" height="10" fill="yellow"></rect>
+				<text x="40" y="34" fill="black">Total dealyed flihgts</text>
+			</g>
+			<g>
+				<rect x="10" y="36" width="20" height="10" fill="pink"></rect>
+				<text x="40" y="46" fill="black">Dealyed flihgts (carrier)</text>
+			</g>
+
+			<g>
+				<rect x="10" y="48" width="20" height="10" fill="brown"></rect>
+				<text x="40" y="58" fill="black">Dealyed flihgts (weather)</text>
+			</g>
+			<g>
+				<rect x="10" y="60" width="20" height="10" fill="purple"></rect>
+				<text x="40" y="70" fill="black">Dealyed flihgts (nas)</text>
+			</g>
+			<g>
+				<rect x="10" y="72" width="20" height="10" fill="#0DFCF0"></rect>
+				<text x="40" y="82" fill="black">Dealyed flihgts (security)</text>
+			</g>
+			<g>
+				<rect x="10" y="84" width="20" height="10" fill="#66FC0D"></rect>
+				<text x="40" y="94" fill="black">Dealyed flihgts (late aircraft)</text>
+			</g>
+		</svg>
+
+		<script type="text/javascript">
+
+			//Width and height
+			var width = 800;
+			var height = 500;
+			var padding = 0;
+			
+			var dataset, xScale, yScale, xAxis, yAxis;  //Empty, for now
+
+			//Load in the data
+			d3.csv("delay-by-month.csv", function(data) {
+
+				dataset = data;
+
+				const xValue = d => d.month;
+				const yValue1 = d => d.arr_delay;
+				const yValue2 = d => d.carrier_delay;
+				const yValue3 = d => d.weather_delay;
+				const yValue4 = d => d.nas_delay;
+				const yValue5 = d => d.security_delay;
+				const yValue6 = d => d.late_aircraft_delay;
+				
+				const minX = 1;
+				const maxX = 12;
+				const minY = 1096.0;
+				const maxY = 1365493.0;
+
+				const formatTick = d3.format("d");
+				const xTickValues = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+				// const xTickValues = ['Jan 2021', 'Feb 2021', 'Mar 2021', 'Apr 2021', 'May 2021', 'Jun 2021', 'Jul 2021', 'Aug 2021', 'Sep 2021', 'Oct 2021', 'Nov 2021', 'Dec 2021'];
+
+				const xAxisLabel = 'Month';
+				const yAxisLabel = 'Flight';
+				const title = 'Delayed Flights Over Months';
+
+				const margin = { top: 80, right: 60, bottom: 88, left: 120 };
+      			const innerWidth = width - margin.left - margin.right;
+      			const innerHeight = height - margin.top - margin.bottom;
+
+				const formatAsThousands = d3.format(","); 
+				
+				xScale = d3.scaleLinear()
+								.domain([minX, maxX])
+							   .range([0, innerWidth])
+							   .nice();
+
+				yScale = d3.scaleLinear()
+							   .domain([minY, maxY])
+							   .range([innerHeight, 0])
+							   .nice();
+				
+				var tooltip = d3.select("#tooltip")
+
+				//Create SVG element
+				var svg = d3.select("body")
+							.append("svg")
+							.attr("width", width)
+							.attr("height", height);
+				
+				const g = svg.append('g')
+        			.attr('transform', `translate(${margin.left},${margin.top})`);
+
+				//Define X axis
+				xAxis = d3.axisBottom()
+								  .scale(xScale)
+								//   .tickFormat(formatAsThousands)
+								  .tickValues(xTickValues)
+								  .tickSize(-innerHeight)
+								  .tickPadding(10);
+			
+				//Define Y axis
+				yAxis = d3.axisLeft()
+								  .scale(yScale)
+								  .tickFormat(formatAsThousands)
+								  .tickSize(-innerWidth)
+								  .tickPadding(10);
+
+				const  xAxisG = g.append('g').call(xAxis)
+        					.attr('transform', `translate(0, ${innerHeight})`);
+				xAxisG.selectAll('.domain').remove();
+
+				xAxisG.append('text')
+        			.attr('class', 'axis-label')
+        			.attr('y', 50)
+        			.attr('x', innerWidth/2)
+        			.attr('fill', 'black')
+        			.text(xAxisLabel);
+
+				const yAxisG = g.append('g').call(yAxis);
+				yAxisG.selectAll('.domain').remove();
+				
+				yAxisG.append('text')
+        			.attr('class', 'axis-label')
+        			.attr('y', -80)
+        			.attr('x', -innerHeight / 2)
+        			.attr('fill', 'black')
+        			.attr('transform', `rotate(-90)`)
+        			.attr('text-anchor', 'middle')
+        			.text(yAxisLabel);
+
+				g.append('text')
+					.attr('class', 'title')
+					.attr('x', 115
+					)
+					.attr('y', -10)
+					.text(title);
+
+				//Define line generators
+				const lineGenerator1 = d3.line()
+					.x(d => xScale(xValue(d)))
+					.y(d => yScale(yValue1(d)));
+
+				g.append('path')
+					.attr('class', 'line-path')
+					.attr('stroke', 'yellow')
+					.attr('fill', 'yellow')
+					.attr('d', lineGenerator1(data));
+
+				//Define line generators
+				const lineGenerator2 = d3.line()
+					.x(d => xScale(xValue(d)))
+					.y(d => yScale(yValue2(d)));
+
+				g.append('path')
+					.attr('class', 'line-path')
+					.attr('stroke', 'pink')
+					.attr('fill', 'pink')
+					.attr('d', lineGenerator2(data));	
+				
+				//Define line generators
+				const lineGenerator3 = d3.line()
+					.x(d => xScale(xValue(d)))
+					.y(d => yScale(yValue3(d)));
+
+				g.append('path')
+					.attr('class', 'line-path')
+					.attr('stroke', 'brown')
+					.attr('fill', 'brown')
+					.attr('d', lineGenerator3(data));
+					
+				//Define line generators
+				const lineGenerator4 = d3.line()
+					.x(d => xScale(xValue(d)))
+					.y(d => yScale(yValue4(d)));
+
+				g.append('path')
+					.attr('class', 'line-path')
+					.attr('stroke', 'purple')
+					.attr('fill', 'purple')
+					.attr('d', lineGenerator4(data));
+				
+				//Define line generators
+				const lineGenerator5 = d3.line()
+					.x(d => xScale(xValue(d)))
+					.y(d => yScale(yValue5(d)));
+
+				g.append('path')
+					.attr('class', 'line-path')
+					.attr('stroke', '#0DFCF0')
+					.attr('fill', '#0DFCF0')
+					.attr('d', lineGenerator5(data));
+
+				//Define line generators
+				const lineGenerator6 = d3.line()
+					.x(d => xScale(xValue(d)))
+					.y(d => yScale(yValue6(d)));
+
+				g.append('path')
+					.attr('class', 'line-path')
+					.attr('stroke', '#66FC0D')
+					.attr('fill', '#66FC0D')
+					.attr('d', lineGenerator6(data));
+
+				d3.csv("months.csv", function(dataMonths) {
+				
+					const gXValue = d => d.months;
+					const gYValue = d => d.flights;
+
+					g.selectAll("circle")
+						.data(dataMonths)
+						.enter()
+						.append("circle")
+						.attr("cx", function(d) {
+								return xScale(gXValue(d));
+						})
+						.attr("cy", function(d) {
+								return yScale(gYValue(d));
+						})
+						.attr("r", 2.5)
+						.style("fill", "black")
+						.on('mouseover', function (d, i) {
+							d3.select(this).transition()
+								.duration('100')
+								.style("fill", "orange");
+						})
+						.on('mouseout', function (d, i) {
+							d3.select(this).transition()
+								.duration('200')
+								.style("fill", "black");
+						})
+						.append("title")			
+							.text(function(d) {
+								return gYValue(d);
+						});
+				});
+			});
+			
+		</script>
+	</body>
+</html>
